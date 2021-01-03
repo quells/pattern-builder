@@ -253,19 +253,20 @@ function draw() {
         if (scale < 0.01) {
             return;
         }
+        let size = ((imgWidth > imgHeight) ? imgWidth : imgHeight) * scale * 1.5;
         let width = imgWidth * scale;
         let height = imgHeight * scale;
         let offscreen = document.createElement("canvas");
-        offscreen.width = 1.5*width;
-        offscreen.height = 1.5*height;
+        offscreen.width = size;
+        offscreen.height = size;
         let ofCtx = offscreen.getContext("2d");
         ofCtx.clearRect(0, 0, offscreen.width, offscreen.height);
-        let rotImg = new Image(width, height);
+        let rotImg = new Image(size, size);
         rotImg.src = el.getAttribute("data-img-src");
-        ofCtx.translate(0.5*width, 0.5*height);
+        ofCtx.translate(0.5*size, 0.5*size);
         ofCtx.rotate($(`#rotate-${id}`).value);
         ofCtx.drawImage(rotImg, -0.5*width, -0.5*height, width, height);
-        ofCtx.translate(-0.5*width, -0.5*height);
+        ofCtx.translate(-0.5*size, -0.5*size);
         for (let j = -1; j <= 1; j++) {
             let dy = j * canvas.height;
             for (let i = -1; i <= 1; i++) {
