@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <title>Tiler</title>
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col">
+            <canvas id="canvas" width="600" height="600"></canvas>
+        </div>
+        <div class="col">
+            <div class="container mt-2">
+                <div class="row">
+                    <div class="col">
+                        <label for="tileWidth" class="form-label">Tile Width</label>
+                        <input id="tileWidth" type="number" value="600" step="1" class="form-control">
+                    </div>
+                    <div class="col">
+                        <label for="tileHeight" class="form-label">Tile Height</label>
+                        <input id="tileHeight" type="number" value="600" step="1" class="form-control">
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col">
+                        <label for="backgroundColor" class="form-label">Background Color</label>
+                        <div class="input-group" style="height: 34px;">
+                            <div class="input-group-text">
+                                <input id="solidBackground" type="checkbox" class="form-check-input">
+                            </div>
+                            <input id="backgroundColor" type="color" value="#ffffff" class="form-control" style="height: 100%;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div id="controls" class="container"></div>
+            <div class="container mt-3">
+                <div class="row">
+                    <div class="col">
+                        <input id="img-selector" type="file" accept="image/*" class="form-control">
+                    </div>
+                    <div class="col-auto">
+                        <button id="add-img" class="btn btn-primary">Add Image</button>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col">
+                        <button id="export" class="btn btn-secondary">Export</button>
+                        <button id="testPattern" class="btn btn-secondary">Test Pattern</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function $(s) {
+    return document.querySelector(s);
+}
+function $$(s) {
+    return document.querySelectorAll(s);
+}
+function el(tag, attrs, children) {
+    let e = document.createElement(tag);
+    if (attrs) {
+        for (let k in attrs) {
+            switch (k) {
+            case "onclick": {
+                e.onclick = attrs[k];
+                break;
+            }
+            case "onchange": {
+                e.onchange = attrs[k];
+                break;
+            }
+            case "oninput": {
+                e.oninput = attrs[k];
+                break;
+            }
+            default:
+                e.setAttribute(k, attrs[k]);
+                break;
+            }
+        }
+    }
+    if (children) {
+        if (Array.isArray(children)) {
+            for (let c of children) {
+                e.appendChild(c);
+            }
+        } else{
+            if (typeof children === "string") {
+                e.innerHTML = children;
+            } else {
+                e.appendChild(children);
+            }
+        }
+    }
+    return e;
+}
+function t(content) {
+    return document.createTextNode(content);
+}
+function row(children) {
+    return el("div", {class: "row"}, children);
+}
+function col(children) {
+    return el("div", {class: "col"}, children);
+}
+
+let _rowId = 0;
+function nextRowId() {
+    return `${_rowId++}`;
+}
+function addRow(src, width, height) {
+    let id = nextRowId();
+    let previewWidth, previewHeight;
+    if (width > height) {
+        previewWidth = 100;
+        previewHeight = Math.round(height / width * 100);
+    } else {
+        previewWidth = Math.round(width / height * 100);
+        previewHeight = 100;
+    }
+    $("#controls").appendChild(el("div", {id: `row-${id}`, class: "row", "data-img-src": src, "data-img-width": width, "data-img-height": height}, [
+        el("div", {class: "col-auto"}, [
+            row(el("img", {width: previewWidth, height: previewHeight, src: src, style: `width: inherit`})),
+            row([
+                col(el("button", {class: "btn btn-light", onclick: function onclick() { copyRow(id); }}, "📋")),
+                col(el("button", {class: "btn btn-light", onclick: function onclick() { deleteRow(id); }}, "🗑️"))
+            ])
+        ]),
+        el("div", {class: "col"}, [
+            row([
+                col([
+                    el("label", {class: "form-label", for: `offset-x-${id}`}, t("X")),
+                    el("input", {id: `offset-x-${id}`, class: "form-range", type: "range", min: "-1", max: "1", value: "0", step: "any", oninput: draw})
+                ]),
+                col([
+                    el("label", {class: "form-label", for: `offset-y-${id}`}, t("Y")),
+                    el("input", {id: `offset-y-${id}`, class: "form-range", type: "range", min: "-1", max: "1", value: "0", step: "any", oninput: draw})
+                ])
+            ]),
+            row([
+                col([
+                    el("label", {class: "form-label", for: `scale-${id}`},
+                        el("button", {class: "btn btn-link p-0 m-0", onclick: function() { resetScale(id); }}, t("Scale"))),
+                    el("input", {id: `scale-${id}`, class: "form-range", type: "range", min: "0", max: "2", value: "1", step: "any", oninput: draw})
+                ]),
+                col([
+                    el("label", {class: "form-label", for: `rotate-${id}`},
+                        el("button", {class: "btn btn-link p-0 m-0", onclick: function() { resetRotate(id); }}, t("Rotate"))),
+                    el("input", {id: `rotate-${id}`, class: "form-range", type: "range", min: "-3.2", max: "3.2", value: "0", step: "any", oninput: draw})
+                ])
+            ])
+        ])
+    ]));
+    draw();
+}
+function copyRow(prevId) {
+    let r = $(`#row-${prevId}`);
+    let src = r.getAttribute("data-img-src");
+    let width = parseInt(r.getAttribute("data-img-width"));
+    let height = parseInt(r.getAttribute("data-img-height"));
+    addRow(src, width, height);
+}
+function deleteRow(id) {
+    let r = $(`#row-${id}`);
+    r.parentNode.removeChild(r);
+    draw();
+}
+function resetScale(id) {
+    $(`#scale-${id}`).value = 1;
+    draw();
+}
+function resetRotate(id) {
+    $(`#rotate-${id}`).value = 0;
+    draw();
+}
+
+$("#add-img").onclick = function() {
+    let input = $("#img-selector");
+    if (input.files.length < 1) {
+        alert("Select an image first");
+        return;
+    }
+
+    let reader = new FileReader();
+    reader.onloadend = function(e) {
+        let data = e.target.result;
+        let img = new Image();
+        img.onload = function() {
+            addRow(img.src, img.naturalWidth, img.naturalHeight);
+        }
+        img.src = data;
+    }
+    reader.readAsDataURL(input.files[0]);
+}
+
+function updateCanvasSize(width, height) {
+    let canvas = $("#canvas");
+    canvas.setAttribute("width", width);
+    canvas.setAttribute("height", height);
+    draw();
+}
+$("#tileWidth").onchange = function(e) {
+    let height = $("#tileHeight").value;
+    updateCanvasSize(e.target.value, height);
+}
+$("#tileHeight").onchange = function(e) {
+    let width = $("#tileWidth").value;
+    updateCanvasSize(width, e.target.value);
+}
+
+var solidBackground = $("#solidBackground").checked;
+var backgroundColor = $("#backgroundColor").value;
+function updateCanvasBackground(checked, color) {
+    solidBackground = checked;
+    backgroundColor = color;
+    draw();
+}
+$("#solidBackground").onchange = function(e) {
+    let color = $("#backgroundColor").value;
+    updateCanvasBackground(e.target.checked, color);
+}
+$("#backgroundColor").onchange = function(e) {
+    let checked = $("#solidBackground").checked;
+    updateCanvasBackground(checked, e.target.value);
+}
+
+function draw() {
+    let canvas = $("#canvas");
+    let ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (solidBackground) {
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    let imgs = $$("[data-img-src]");
+    imgs.forEach(function(el) {
+        let id = el.getAttribute("id").slice(4);
+        let imgWidth = el.getAttribute("data-img-width");
+        let imgHeight = el.getAttribute("data-img-height");
+        let x = canvas.width * $(`#offset-x-${id}`).value;
+        let y = canvas.height * $(`#offset-y-${id}`).value;
+        let scale = $(`#scale-${id}`).value;
+        if (scale < 0.01) {
+            return;
+        }
+        let width = imgWidth * scale;
+        let height = imgHeight * scale;
+        let offscreen = document.createElement("canvas");
+        offscreen.width = 1.5*width;
+        offscreen.height = 1.5*height;
+        let ofCtx = offscreen.getContext("2d");
+        ofCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+        let rotImg = new Image(width, height);
+        rotImg.src = el.getAttribute("data-img-src");
+        ofCtx.translate(0.5*width, 0.5*height);
+        ofCtx.rotate($(`#rotate-${id}`).value);
+        ofCtx.drawImage(rotImg, -0.5*width, -0.5*height, width, height);
+        ofCtx.translate(-0.5*width, -0.5*height);
+        for (let j = -1; j <= 1; j++) {
+            let dy = j * canvas.height;
+            for (let i = -1; i <= 1; i++) {
+                let dx = i * canvas.width;
+                ctx.drawImage(offscreen, x+dx, y+dy);
+            }
+        }
+    });
+}
+
+function grabTile() {
+    let canvas = $("#canvas");
+    return canvas.toDataURL("image/png");
+}
+$("#export").onclick = function() {
+    window.open(grabTile());
+}
+$("#testPattern").onclick = function() {
+    window.open("test.html?tile=" + btoa(grabTile()));
+}
+
+draw();
+</script>
+</body>
+</html>
