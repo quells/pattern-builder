@@ -286,7 +286,7 @@ function grabTile() {
     return canvas.toDataURL("image/png");
 }
 $("#export").onclick = function() {
-    window.open(grabTile());
+    window.location = grabTile();
 }
 $("#testPattern").onclick = function() {
     document.body.style['background-image'] = `url("${grabTile()}")`;
