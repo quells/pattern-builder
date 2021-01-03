@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
-    <title>Tiler</title>
+    <title>Pattern Builder</title>
+    <style>body { background-repeat: repeat; } #preview { background: white; }</style>
 </head>
 <body>
-<div class="container">
+<div id="builder" class="container">
     <div class="row">
         <div class="col">
             <canvas id="canvas" width="600" height="600"></canvas>
@@ -56,6 +57,9 @@
             </div>
         </div>
     </div>
+</div>
+<div id="preview" class="d-none">
+    <button id="reset-preview" class="btn btn-primary">Return to Builder</button>
 </div>
 
 <script>
@@ -285,7 +289,18 @@ $("#export").onclick = function() {
     window.open(grabTile());
 }
 $("#testPattern").onclick = function() {
-    window.open("test.html?tile=" + btoa(grabTile()));
+    document.body.style['background-image'] = `url("${grabTile()}")`;
+    document.body.style.width = '10000px';
+    document.body.style.height = '10000px';
+    $("#builder").classList.add("d-none");
+    $("#preview").classList.remove("d-none");
+}
+$("#reset-preview").onclick = function() {
+    document.body.style['background-image'] = `none`;
+    document.body.style.width = 'inherit';
+    document.body.style.height = 'inherit';
+    $("#builder").classList.remove("d-none");
+    $("#preview").classList.add("d-none");
 }
 
 draw();
