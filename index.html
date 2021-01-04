@@ -50,8 +50,8 @@
                 </div>
                 <div class="row mt-3">
                     <div class="col">
-                        <button id="export" class="btn btn-secondary">Export</button>
                         <button id="testPattern" class="btn btn-secondary">Test Pattern</button>
+                        <a id="export" href="" target="_blank">Save As</a>
                     </div>
                 </div>
             </div>
@@ -279,15 +279,17 @@ function draw() {
             }
         }
     });
+
+    $("#export").setAttribute("href", grabTile());
 }
 
 function grabTile() {
     let canvas = $("#canvas");
     return canvas.toDataURL("image/png");
 }
-$("#export").onclick = function() {
-    window.open(grabTile());
-}
+// $("#export").onclick = function() {
+//     window.open(grabTile());
+// }
 $("#testPattern").onclick = function() {
     document.body.style['background-image'] = `url("${grabTile()}")`;
     document.body.style.width = '10000px';
